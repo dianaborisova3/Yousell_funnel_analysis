@@ -1,0 +1,52 @@
+-- ============================================================
+-- Маркетплейс YouSell: воронка действий пользователя
+-- Этап 4. Построение воронки по полу и возрастным группам
+-- ============================================================
+WITH users_gender_age_steps AS (
+    SELECT 
+      COALESCE(c.gender, 'unknown') AS gender,  -- разбивка по полу, 'unknown' если не указан
+      CASE 
+        WHEN c.birth_date IS NULL THEN 'unknown'  -- назначаем возрастные группы, 'unknown' если не указан
+        WHEN EXTRACT(YEAR FROM AGE(c.birth_date)) < 18 THEN 'under_18'
+        WHEN EXTRACT(YEAR FROM AGE(c.birth_date)) < 31 THEN '18_30'
+        WHEN EXTRACT(YEAR FROM AGE(c.birth_date)) < 46 THEN '30_45'
+        ELSE '46_plus'
+      END AS age_group,
+      ca.customer_id,
+      MAX(CASE WHEN ca.event_type = 'Page View' THEN 1 ELSE 0 END) AS viewed,  -- просмотрели товар
+      MAX(CASE WHEN ca.event_type = 'Add to Cart' THEN 1 ELSE 0 END) AS added,  -- добавили в корзину
+      MAX(CASE WHEN ca.event_type = 'Purchase' THEN 1 ELSE 0 END) AS purchased  -- совершили покупку
+    FROM 
+      customer_actions ca
+    LEFT JOIN customers c USING(customer_id)
+    GROUP BY 
+      COALESCE(c.gender, 'unknown'),
+      CASE 
+        WHEN c.birth_date IS NULL THEN 'unknown'
+        WHEN EXTRACT(YEAR FROM AGE(c.birth_date)) < 18 THEN 'under_18'
+        WHEN EXTRACT(YEAR FROM AGE(c.birth_date)) < 31 THEN '18_30'
+        WHEN EXTRACT(YEAR FROM AGE(c.birth_date)) < 46 THEN '30_45'
+        ELSE '46_plus'
+      END,
+      ca.customer_id
+)
+
+SELECT
+  gender,
+  age_group,
+  COUNT(*) FILTER (WHERE viewed = 1) AS user_view,  -- кол-во посмотревших
+  COUNT(*) FILTER (WHERE added = 1) AS user_add,  -- кол-во добавивших
+  COUNT(*) FILTER (WHERE purchased = 1) AS user_purchase,  -- кол-во купивших
+  ROUND(100.0 * COUNT(*) FILTER (WHERE added = 1) / COUNT(*) FILTER (WHERE viewed = 1), 2) AS cr_view_add,  -- конверсия в добавление товара
+  ROUND(100.0 * COUNT(*) FILTER (WHERE purchased = 1) / COUNT(*) FILTER (WHERE added = 1), 2) AS cr_add_purchase,  -- конверсия в покупку
+  ROUND(100.0 * COUNT(*) FILTER (WHERE purchased = 1) / COUNT(*) FILTER (WHERE viewed = 1), 2) AS cr_view_purchase,  -- сквозная конверсия просмотр-покупка
+  ROUND(100.0 - 100.0 * COUNT(*) FILTER (WHERE added = 1) / COUNT(*) FILTER (WHERE viewed = 1), 2) AS dropoff_view_add,  -- падение на этапе добавления
+  ROUND(100.0 - 100.0 * COUNT(*) FILTER (WHERE purchased = 1) / COUNT(*) FILTER (WHERE added = 1), 2) AS dropoff_add_purchase  -- падение на этапе покупки 
+FROM 
+  users_gender_age_steps
+GROUP BY 
+  gender, age_group
+HAVING
+  COUNT(*) FILTER (WHERE viewed = 1) >= 40  -- отбрасываем слишком маленькие группы
+ORDER BY 
+  cr_view_purchase  -- сортировка по сквозной конверсии
