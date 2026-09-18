@@ -42,9 +42,9 @@ FROM
 WITH user_steps_2 AS (
     SELECT 
       customer_id,
-      MAX(CASE WHEN event_type = 'Add to Cart' THEN 1 ELSE 0 END) AS added,
-      MAX(CASE WHEN event_type = 'Checkout' THEN 1 ELSE 0 END) AS checked_out,
-      MAX(CASE WHEN event_type = 'Purchase' THEN 1 ELSE 0 END) AS purchased
+      MAX(CASE WHEN event_type = 'Add to Cart' THEN 1 ELSE 0 END) AS added,  -- добавили в корзину
+      MAX(CASE WHEN event_type = 'Checkout' THEN 1 ELSE 0 END) AS checked_out,  -- прошли оформление
+      MAX(CASE WHEN event_type = 'Purchase' THEN 1 ELSE 0 END) AS purchased  -- совершили покупку
     FROM 
       customer_actions
     GROUP BY 
@@ -52,10 +52,10 @@ WITH user_steps_2 AS (
 )
 
 SELECT 
-  COUNT(*) FILTER (WHERE added = 1) AS users_add,
-  COUNT(*) FILTER (WHERE checked_out = 1) AS users_checkout,
-  COUNT(*) FILTER (WHERE checked_out = 1 AND purchased = 1) AS checkout_buyers,
-  COUNT(*) FILTER (WHERE checked_out = 1 AND purchased = 0) AS checkout_leave,
-  ROUND(100.0 * COUNT(*) FILTER (WHERE checked_out = 1 AND purchased = 1) / COUNT(*) FILTER (WHERE checked_out = 1), 2) AS cr_checkout_purchase
+  COUNT(*) FILTER (WHERE added = 1) AS users_add,  -- кол-во добавивших товар
+  COUNT(*) FILTER (WHERE checked_out = 1) AS users_checkout,  -- кол-во прошедших оформление
+  COUNT(*) FILTER (WHERE checked_out = 1 AND purchased = 1) AS checkout_buyers,  -- чекаут и совершили покупку
+  COUNT(*) FILTER (WHERE checked_out = 1 AND purchased = 0) AS checkout_leave,  -- чекаут и оставили корзину
+  ROUND(100.0 * COUNT(*) FILTER (WHERE checked_out = 1 AND purchased = 1) / COUNT(*) FILTER (WHERE checked_out = 1), 2) AS cr_checkout_purchase  -- конверсия в покупку с шага чекаут
 FROM 
   user_steps_2;
