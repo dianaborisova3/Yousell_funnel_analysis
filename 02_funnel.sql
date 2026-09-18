@@ -2,7 +2,7 @@
 -- Маркетплейс YouSell: воронка действий пользователя
 -- Этап 2. Построение воронки: Page View - Add to Cart - Purchase
 -- ============================================================
--- ВАЖНО: шаг Checkout исключён из воронки. Обоснование — в проверках 1.13–1.15.
+-- ВАЖНО: шаг Checkout исключён из воронки. Обоснование — в проверках 13–15
 -- ============================================================
 -- 1. Построение основной воронки
 WITH user_steps AS (
@@ -19,7 +19,6 @@ WITH user_steps AS (
 
 funnel AS (
     SELECT 
-      COUNT(*) AS total_users,  -- всего пользователей
       COUNT(*) FILTER (WHERE viewed = 1) AS users_view,  -- кол-во дошедших до просмотра
       COUNT(*) FILTER (WHERE added = 1) AS users_add,  -- кол-во добавивших в корзину
       COUNT(*) FILTER (WHERE purchased = 1) AS users_purchase  -- кол-во купивших
@@ -27,12 +26,10 @@ funnel AS (
       user_steps
 )
 
-SELECT 
-  total_users,
+SELECT
   users_view,
   users_add,
   users_purchase,
-  ROUND(100.0 * users_view / total_users, 2) AS cr_view_page,  -- конверсия в просмотр
   ROUND(100.0 * users_add / users_view, 2) AS cr_add_cart,  -- конверсия в добавление в корзину
   ROUND(100.0 * users_purchase / users_add, 2) AS cr_purchase,  -- конверсия в покупку
   ROUND(100.0 * users_purchase / users_view, 2) AS cr_view_purchase,  -- конверсия из просмотра в покупку
