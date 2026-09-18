@@ -1,0 +1,35 @@
+-- ============================================================
+-- Маркетплейс YouSell: воронка действий пользователя
+-- Этап 4. Построение воронки по городам
+-- ============================================================
+WITH user_cities AS (
+    SELECT 
+      COALESCE(customer_city, 'unknown') AS customer_city,  -- заменяем на 'unknown', если не указан город
+      ca.customer_id,
+      MAX(CASE WHEN ca.event_type = 'Page View' THEN 1 ELSE 0 END) AS viewed,  -- посмотрели товар
+      MAX(CASE WHEN ca.event_type = 'Add to Cart' THEN 1 ELSE 0 END) AS added,  -- добавили в корзину
+      MAX(CASE WHEN ca.event_type = 'Purchase' THEN 1 ELSE 0 END) AS purchased  -- совершили покупку
+    FROM 
+      customer_actions ca 
+    LEFT JOIN 
+      customers c USING(customer_id)
+    GROUP BY 
+      COALESCE(customer_city, 'unknown'), customer_id  -- группировка по паре город-пользователь
+)
+
+SELECT 
+  customer_city,
+  COUNT(*) FILTER (WHERE viewed = 1) AS user_view,  -- кол-во посмотревших
+  COUNT(*) FILTER (WHERE added = 1) AS user_add,  -- кол-во добавивших товар
+  COUNT(*) FILTER (WHERE purchased = 1) AS user_purchase,  -- кол-во совершивших покупку
+  ROUND(100.0 * COUNT(*) FILTER (WHERE added = 1) / COUNT(*) FILTER (WHERE viewed = 1), 2) AS cr_view_add,  -- конверсия в добавление
+  ROUND(100.0 * COUNT(*) FILTER (WHERE purchased = 1) / COUNT(*) FILTER (WHERE added = 1), 2) AS cr_add_purchase,  -- конверсия в покупку
+  ROUND(100.0 * COUNT(*) FILTER (WHERE purchased = 1) / COUNT(*) FILTER (WHERE viewed = 1), 2) AS cr_view_purchase,  -- сквозная конверсия из просмотра в покупку
+  ROUND(100.0 - 100.0 * COUNT(*) FILTER (WHERE added = 1) / COUNT(*) FILTER (WHERE viewed = 1), 2) AS dropoff_view_add,  -- падение на этапе добавления
+  ROUND(100.0 - 100.0 * COUNT(*) FILTER (WHERE purchased = 1) / COUNT(*) FILTER (WHERE added = 1), 2) AS dropoff_add_purchase  -- падение на этапе покупки
+FROM
+  user_cities
+GROUP BY 
+  customer_city
+ORDER BY 
+  cr_view_purchase  -- сортировка по сквозной конверсии
