@@ -59,6 +59,14 @@ PostgreSQL, Redash, SQL (CTE, оконные функции, JOIN, FILTER, CASE)
 [посмотреть развернутые выводы и рекомендации](https://github.com/dianaborisova3/Yousell_funnel_analysis/blob/main/docs/03_results_recommendations.md)  
 
 ---
+### Ограничения и сложности
+- Период 3 месяца (январь–март 2024), недостаточно для оценки сезонности и долгосрочного удержания.
+- Возвраты (24.6%) не исключались из анализа, если считать конверсию в «чистые» покупки, цифры будут ниже.
+- Шаги воронки считаются по уникальным пользователям на каждом шаге, а не по порядку событий.
+- 45.5% покупок не имеет Checkout перед покупкой, а из-за отсутствия order_id у Checkout связать его с конкретным заказом невозможно.
+- 903 пользователя имеют Purchase до первого Checkout - их нельзя однозначно отнести к «купившим через Checkout» или «без Checkout».
+
+---
 ### Содержание документации:
 - [Словарь данных](https://github.com/dianaborisova3/Yousell_funnel_analysis/blob/main/docs/01_data_dictionary.md)
 - [Методология](https://github.com/dianaborisova3/Yousell_funnel_analysis/blob/main/docs/02_methodology.md)
